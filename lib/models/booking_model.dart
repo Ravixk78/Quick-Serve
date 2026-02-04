@@ -1,4 +1,4 @@
-enum BookingStatus { pending, confirmed, completed, cancelled }
+enum BookingStatus { pending, confirmed, on_hold, completed, cancelled }
 
 class BookingModel {
   final String id;
@@ -75,6 +75,8 @@ class BookingModel {
         return BookingStatus.completed;
       case 'cancelled':
         return BookingStatus.cancelled;
+      case 'on_hold':
+        return BookingStatus.on_hold;
       default:
         return BookingStatus.pending;
     }
@@ -90,6 +92,8 @@ class BookingModel {
         return 'Pending';
       case BookingStatus.confirmed:
         return 'Confirmed';
+      case BookingStatus.on_hold:
+        return 'On Hold';
       case BookingStatus.completed:
         return 'Completed';
       case BookingStatus.cancelled:

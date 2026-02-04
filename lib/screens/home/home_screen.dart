@@ -6,6 +6,7 @@ import '../../services/service_service.dart';
 import '../../theme/app_theme.dart';
 import '../../models/service_model.dart';
 import '../../widgets/animated_service_icon.dart';
+import '../services/enhanced_service_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -152,10 +153,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             controller: _searchController,
                             onSubmitted: (val) {
                               if (val.isNotEmpty) {
-                                Navigator.pushNamed(
+                                Navigator.push(
                                   context,
-                                  '/services',
-                                  arguments: {'search': val},
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        EnhancedServiceListScreen(
+                                          categoryName: 'Search: $val',
+                                        ),
+                                  ),
                                 );
                               }
                             },
@@ -297,10 +302,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(
+        Navigator.push(
           context,
-          '/services',
-          arguments: {'categoryId': category.id},
+          MaterialPageRoute(
+            builder: (context) => EnhancedServiceListScreen(
+              categoryId: category.id,
+              categoryName: category.name,
+            ),
+          ),
         );
       },
       child: Container(

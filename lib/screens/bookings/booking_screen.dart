@@ -23,6 +23,7 @@ class _BookingScreenState extends State<BookingScreen> {
   final _notesController = TextEditingController();
   bool _isLoading = false;
   bool _isSuccess = false;
+  String _paymentMethod = 'cash'; // 'cash' or 'card'
 
   @override
   void dispose() {
@@ -45,6 +46,11 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Future<void> _handleBooking() async {
+    if (_paymentMethod == 'card') {
+      final success = await _showCardPaymentDialog();
+      if (!success) return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -82,6 +88,112 @@ class _BookingScreenState extends State<BookingScreen> {
         ),
       );
     }
+  }
+
+  Future<bool> _showCardPaymentDialog() async {
+    bool isProcessing = false;
+    final cardNumberController = TextEditingController();
+    final expiryController = TextEditingController();
+    final cvvController = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+
+          return AlertDialog(
+            backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              'Enter Card Details',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: isProcessing
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(
+                        color: AppTheme.premiumGold,
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Processing Payment...',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  )
+                : SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          controller: cardNumberController,
+                          decoration: const InputDecoration(
+                            labelText: 'Card Number',
+                            hintText: '1234 5678 9101 1121',
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: expiryController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Expiry Date',
+                                  hintText: 'MM/YY',
+                                ),
+                                keyboardType: TextInputType.datetime,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                controller: cvvController,
+                                decoration: const InputDecoration(
+                                  labelText: 'CVV',
+                                  hintText: '123',
+                                ),
+                                keyboardType: TextInputType.number,
+                                obscureText: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+            actions: [
+              if (!isProcessing) ...[
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    setDialogState(() => isProcessing = true);
+                    await Future.delayed(const Duration(seconds: 2));
+                    if (context.mounted) Navigator.pop(context, true);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.premiumGold,
+                    foregroundColor: AppTheme.primaryNavy,
+                  ),
+                  child: const Text('Pay Now'),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+
+    return result ?? false;
   }
 
   @override
@@ -237,6 +349,52 @@ class _BookingScreenState extends State<BookingScreen> {
                     ),
                   ],
                 ),
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            Text(
+              'Payment Method',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withAlpha(5) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.premiumGold.withAlpha(50)),
+              ),
+              child: Column(
+                children: [
+                  RadioListTile<String>(
+                    title: const Text('Cash on Service'),
+                    secondary: const Icon(
+                      Icons.money_outlined,
+                      color: Colors.green,
+                    ),
+                    value: 'cash',
+                    groupValue: _paymentMethod,
+                    activeColor: AppTheme.premiumGold,
+                    onChanged: (val) => setState(() => _paymentMethod = val!),
+                  ),
+                  const Divider(height: 1),
+                  RadioListTile<String>(
+                    title: const Text('Credit / Debit Card'),
+                    secondary: const Icon(
+                      Icons.credit_card_rounded,
+                      color: Colors.blue,
+                    ),
+                    value: 'card',
+                    groupValue: _paymentMethod,
+                    activeColor: AppTheme.premiumGold,
+                    onChanged: (val) => setState(() => _paymentMethod = val!),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 32),

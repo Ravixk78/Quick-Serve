@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import 'edit_profile_screen.dart';
+import 'order_history_screen.dart';
+import '../settings/help_support_screen.dart';
+import '../settings/enhanced_settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -16,9 +20,14 @@ class ProfileScreen extends StatelessWidget {
         title: const Text('Profile'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: const Icon(Icons.edit_outlined),
             onPressed: () {
-              // TODO: Navigate to edit profile
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EditProfileScreen(),
+                ),
+              );
             },
           ),
         ],
@@ -32,7 +41,9 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 60,
-                  backgroundColor: AppTheme.primaryColor.withAlpha((0.1 * 255).toInt()),
+                  backgroundColor: AppTheme.primaryColor.withAlpha(
+                    (0.1 * 255).toInt(),
+                  ),
                   child: Text(
                     user?.fullName.substring(0, 1).toUpperCase() ?? 'U',
                     style: const TextStyle(
@@ -80,37 +91,51 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 32),
 
-          // Profile Options
           _buildOptionCard(
             context,
             icon: Icons.person_outline,
             title: 'Personal Information',
             onTap: () {
-              // TODO: Navigate to edit profile
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EditProfileScreen(),
+                ),
+              );
             },
           ),
           _buildOptionCard(
             context,
             icon: Icons.history,
-            title: 'Booking History',
+            title: user?.role == 'service_provider'
+                ? 'My Orders'
+                : 'Booking History',
             onTap: () {
-              // Navigate to bookings
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const OrderHistoryScreen(),
+                ),
+              );
             },
           ),
-          _buildOptionCard(
-            context,
-            icon: Icons.payment,
-            title: 'Payment Methods',
-            onTap: () {
-              // TODO: Navigate to payment methods
-            },
-          ),
+          if (user?.role != 'service_provider')
+            _buildOptionCard(
+              context,
+              icon: Icons.payment,
+              title: 'Payment Methods',
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Payment methods coming soon!')),
+                );
+              },
+            ),
           _buildOptionCard(
             context,
             icon: Icons.notifications_outlined,
             title: 'Notifications',
             onTap: () {
-              // Navigate to notifications
+              Navigator.pushNamed(context, '/notifications');
             },
           ),
           _buildOptionCard(
@@ -118,7 +143,12 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.settings_outlined,
             title: 'Settings',
             onTap: () {
-              Navigator.pushNamed(context, '/settings');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EnhancedSettingsScreen(),
+                ),
+              );
             },
           ),
           _buildOptionCard(
@@ -126,7 +156,12 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.help_outline,
             title: 'Help & Support',
             onTap: () {
-              // TODO: Navigate to help
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HelpSupportScreen(),
+                ),
+              );
             },
           ),
           const SizedBox(height: 16),

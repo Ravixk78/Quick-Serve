@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../models/service_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/service_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../utils/image_helper.dart';
 
 class AddServiceScreen extends StatefulWidget {
   const AddServiceScreen({super.key});
@@ -30,7 +30,6 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   bool _isLoading = false;
   bool _isFetchingCategories = true;
   File? _imageFile;
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -57,18 +56,11 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   }
 
   Future<void> _pickImage() async {
-    try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 70,
-      );
-      if (pickedFile != null) {
-        setState(() {
-          _imageFile = File(pickedFile.path);
-        });
-      }
-    } catch (e) {
-      debugPrint('Error picking image: $e');
+    final File? croppedImage = await ImageHelper.showImageSourceDialog(context);
+    if (croppedImage != null) {
+      setState(() {
+        _imageFile = croppedImage;
+      });
     }
   }
 

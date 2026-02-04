@@ -101,6 +101,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 _buildBookingList([
                   BookingStatus.pending,
                   BookingStatus.confirmed,
+                  BookingStatus.on_hold,
                 ]),
                 _buildBookingList([BookingStatus.completed]),
                 _buildBookingList([BookingStatus.cancelled]),
@@ -111,7 +112,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
 
   Widget _buildBookingList(List<BookingStatus> statuses) {
     final filtered = _bookings
-        .where((b) => statuses.contains(b.status))
+        .where((BookingModel b) => statuses.contains(b.status))
         .toList();
 
     if (filtered.isEmpty) {
@@ -296,6 +297,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         break;
       case BookingStatus.confirmed:
         color = AppTheme.infoColor;
+        break;
+      case BookingStatus.on_hold:
+        color = Colors.purple;
         break;
       case BookingStatus.completed:
         color = AppTheme.successColor;

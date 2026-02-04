@@ -1,6 +1,12 @@
 class SupabaseConfig {
-  // TODO: Replace with your actual Supabase project URL and anonymous key
+  // IMPORTANT: Replace with your actual Supabase credentials
   // Get these from: https://app.supabase.com/project/_/settings/api
+  //
+  // Steps:
+  // 1. Go to your Supabase project dashboard
+  // 2. Click Settings > API
+  // 3. Copy "Project URL" and paste below as supabaseUrl
+  // 4. Copy "anon public" key (starts with 'eyJ...') and paste below as supabaseAnonKey
 
   static const String supabaseUrl = 'https://imwklqppxecdlqinbgsg.supabase.co';
   static const String supabaseAnonKey =

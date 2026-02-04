@@ -20,6 +20,7 @@ class AuthService {
     String? phoneNumber,
   }) async {
     try {
+      // Attempt to sign up with Supabase Auth
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
@@ -36,13 +37,40 @@ class AuthService {
           'created_at': DateTime.now().toIso8601String(),
         };
 
-        await _supabase.from(SupabaseConfig.usersTable).insert(userProfile);
-
-        return UserModel.fromJson(userProfile);
+        try {
+          await _supabase.from(SupabaseConfig.usersTable).insert(userProfile);
+          return UserModel.fromJson(userProfile);
+        } catch (dbError) {
+          // If database insert fails, log the user out to clean up
+          await _supabase.auth.signOut();
+          throw Exception(
+            'Database error: Failed to create user profile. Please check your database connection and table structure.',
+          );
+        }
       }
       return null;
+    } on AuthException catch (authError) {
+      // Handle specific Supabase auth errors
+      String errorMessage;
+      switch (authError.message.toLowerCase()) {
+        case String msg when msg.contains('email'):
+          errorMessage = 'Invalid email address';
+          break;
+        case String msg when msg.contains('password'):
+          errorMessage = 'Password must be at least 6 characters';
+          break;
+        case String msg when msg.contains('already registered'):
+          errorMessage = 'This email is already registered';
+          break;
+        default:
+          errorMessage = authError.message;
+      }
+      throw Exception(errorMessage);
     } catch (e) {
-      throw Exception('Sign up failed: $e');
+      if (e.toString().contains('Database error')) {
+        rethrow;
+      }
+      throw Exception('Sign up failed: ${e.toString()}');
     }
   }
 

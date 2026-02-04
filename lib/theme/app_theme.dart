@@ -29,6 +29,7 @@ class AppTheme {
   static const Color warningColor = Color(0xFFF4A261);
   static const Color errorColor = Color(0xFFE76F51);
   static const Color infoColor = Color(0xFF457B9D);
+  static const Color accentGreen = Color(0xFF48BB78); // For success states
 
   // --- LIGHT THEME ---
   static ThemeData lightTheme = ThemeData(

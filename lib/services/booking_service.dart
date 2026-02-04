@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/booking_model.dart';
+import './notification_service.dart';
 
 class BookingService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -105,6 +106,61 @@ class BookingService {
           .single();
 
       return BookingModel.fromJson(response);
+    } catch (e) {
+      throw Exception('Failed to update booking status: $e');
+    }
+  }
+
+  // Update booking status with string (for provider screens)
+  Future<void> changeBookingStatus(String bookingId, String status) async {
+    try {
+      // 1. Update the booking status
+      final response = await _supabase
+          .from(SupabaseConfig.bookingsTable)
+          .update({
+            'status': status,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', bookingId)
+          .select()
+          .single();
+
+      final booking = BookingModel.fromJson(response);
+
+      // 2. Create notification for the customer
+      final notificationService = NotificationService();
+      String title = 'Booking Update';
+      String message =
+          'Your booking for ${booking.serviceName ?? "service"} has been $status.';
+
+      switch (status) {
+        case 'confirmed':
+          title = 'Booking Confirmed! ✅';
+          message =
+              'Great news! Your booking has been confirmed by the professional.';
+          break;
+        case 'on_hold':
+          title = 'Booking On Hold ⏳';
+          message =
+              'Your booking has been put on hold. Please check for further updates.';
+          break;
+        case 'completed':
+          title = 'Service Completed! 🎉';
+          message =
+              'The service has been marked as completed. Thank you for using QuickServe!';
+          break;
+        case 'cancelled':
+          title = 'Booking Cancelled ❌';
+          message = 'Unfortunately, your booking has been cancelled.';
+          break;
+      }
+
+      await notificationService.addNotification(
+        userId: booking.customerId,
+        title: title,
+        message: message,
+        type: 'order_$status',
+      );
     } catch (e) {
       throw Exception('Failed to update booking status: $e');
     }
