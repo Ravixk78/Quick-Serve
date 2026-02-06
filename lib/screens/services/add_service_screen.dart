@@ -10,7 +10,8 @@ import '../../widgets/custom_text_field.dart';
 import '../../utils/image_helper.dart';
 
 class AddServiceScreen extends StatefulWidget {
-  const AddServiceScreen({super.key});
+  final ServiceModel? serviceToEdit;
+  const AddServiceScreen({super.key, this.serviceToEdit});
 
   @override
   State<AddServiceScreen> createState() => _AddServiceScreenState();
@@ -30,11 +31,43 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   bool _isLoading = false;
   bool _isFetchingCategories = true;
   File? _imageFile;
+  String? _existingImageUrl;
+  bool _isEditing = false;
+  String? _serviceId;
 
   @override
   void initState() {
     super.initState();
     _loadCategories();
+
+    // Check if editing (will also check in didChangeDependencies for Navigator arguments)
+    if (widget.serviceToEdit != null) {
+      _initializeEditMode(widget.serviceToEdit!);
+    }
+  }
+
+  bool _initialized = false;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is ServiceModel) {
+        _initializeEditMode(args);
+      }
+      _initialized = true;
+    }
+  }
+
+  void _initializeEditMode(ServiceModel service) {
+    _isEditing = true;
+    _serviceId = service.id;
+    _nameController.text = service.name;
+    _descriptionController.text = service.description;
+    _priceController.text = service.price.toStringAsFixed(0);
+    _durationController.text = service.duration ?? '';
+    _selectedCategoryId = service.categoryId;
+    _existingImageUrl = service.imageUrl;
   }
 
   Future<void> _loadCategories() async {
@@ -81,27 +114,40 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
 
       if (user == null) throw Exception('Authentication required.');
 
-      String? imageUrl;
+      String? imageUrl = _existingImageUrl;
       if (_imageFile != null) {
         imageUrl = await _serviceService.uploadServiceImage(_imageFile!);
       }
 
-      await _serviceService.createService(
-        name: _nameController.text.trim(),
-        description: _descriptionController.text.trim(),
-        price: double.parse(_priceController.text),
-        categoryId: _selectedCategoryId!,
-        providerId: user.id,
-        providerName: user.fullName,
-        duration: _durationController.text.trim(),
-        imageUrl: imageUrl,
-      );
+      if (_isEditing) {
+        await _serviceService.updateService(
+          serviceId: _serviceId!,
+          name: _nameController.text.trim(),
+          description: _descriptionController.text.trim(),
+          price: double.parse(_priceController.text),
+          duration: _durationController.text.trim(),
+          imageUrl: imageUrl,
+        );
+      } else {
+        await _serviceService.createService(
+          name: _nameController.text.trim(),
+          description: _descriptionController.text.trim(),
+          price: double.parse(_priceController.text),
+          categoryId: _selectedCategoryId!,
+          providerId: user.id,
+          providerName: user.fullName,
+          duration: _durationController.text.trim(),
+          imageUrl: imageUrl,
+        );
+      }
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Service Successfully Published!'),
+        SnackBar(
+          content: Text(
+            _isEditing ? 'Service Updated!' : 'Service Successfully Published!',
+          ),
           backgroundColor: AppTheme.successColor,
         ),
       );
@@ -155,7 +201,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
       appBar: AppBar(
         title: Text(
-          'New Service Listing',
+          _isEditing ? 'Edit Service' : 'New Service Listing',
           style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
@@ -174,7 +220,9 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Tell us about your skill',
+                      _isEditing
+                          ? 'Update your listing'
+                          : 'Tell us about your skill',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
@@ -202,9 +250,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                                   image: FileImage(_imageFile!),
                                   fit: BoxFit.cover,
                                 )
-                              : null,
+                              : (_existingImageUrl != null
+                                    ? DecorationImage(
+                                        image: NetworkImage(_existingImageUrl!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null),
                         ),
-                        child: _imageFile == null
+                        child: _imageFile == null && _existingImageUrl == null
                             ? Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -272,27 +325,27 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                             color: textColor,
                             fontWeight: FontWeight.w500,
                           ),
-                          value: _selectedCategoryId,
-                          items: _dbCategories.isNotEmpty
-                              ? _dbCategories
-                                    .map(
-                                      (c) => DropdownMenuItem(
-                                        value: c.id,
-                                        child: Text(
-                                          c.name,
-                                          style: TextStyle(color: textColor),
-                                        ),
-                                      ),
-                                    )
-                                    .toList()
-                              : [
-                                  const DropdownMenuItem(
-                                    value: '1',
-                                    child: Text('No categories in DB'),
+                          value:
+                              _dbCategories.any(
+                                (c) => c.id == _selectedCategoryId,
+                              )
+                              ? _selectedCategoryId
+                              : null,
+                          items: _dbCategories
+                              .map(
+                                (c) => DropdownMenuItem(
+                                  value: c.id,
+                                  child: Text(
+                                    c.name,
+                                    style: TextStyle(color: textColor),
                                   ),
-                                ],
-                          onChanged: (val) =>
-                              setState(() => _selectedCategoryId = val),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: _isEditing
+                              ? null
+                              : (val) =>
+                                    setState(() => _selectedCategoryId = val),
                           validator: (v) =>
                               v == null ? 'Selection required' : null,
                         ),
@@ -334,7 +387,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                     const SizedBox(height: 40),
 
                     CustomButton(
-                      text: 'Publish Profile',
+                      text: _isEditing ? 'Update Profile' : 'Publish Profile',
                       onPressed: _handleSubmit,
                       isLoading: _isLoading,
                       backgroundColor: AppTheme.premiumGold,

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:intl/intl.dart';
 import '../../services/notification_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/navigation_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/datetime_helper.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -89,7 +90,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 delay: Duration(milliseconds: index * 100),
                 child: _NotificationCard(
                   notification: notification,
-                  onTap: () => _notificationService.markAsRead(notification.id),
+                  onTap: () {
+                    _notificationService.markAsRead(notification.id);
+                    if (notification.type?.contains('order') == true ||
+                        notification.type?.contains('booking') == true) {
+                      context.read<NavigationProvider>().setIndex(1);
+                    }
+                  },
                 ),
               );
             },
@@ -176,9 +183,7 @@ class _NotificationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    DateFormat(
-                      'MMM dd, hh:mm a',
-                    ).format(notification.createdAt),
+                    DateTimeHelper.formatRelativeTime(notification.createdAt),
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],

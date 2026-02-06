@@ -262,13 +262,21 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.primaryNavy.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
+                image: service.imageUrl != null && service.imageUrl!.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage(service.imageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
-              child: Center(
-                child: AnimatedServiceIcon(
-                  category: service.name.split(' ').first,
-                  size: 30,
-                ),
-              ),
+              child: service.imageUrl == null || service.imageUrl!.isEmpty
+                  ? Center(
+                      child: AnimatedServiceIcon(
+                        category: service.name.split(' ').first,
+                        size: 30,
+                      ),
+                    )
+                  : null,
             ),
             title: Text(
               service.name,
@@ -305,13 +313,16 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
               ],
             ),
             trailing: PopupMenuButton<String>(
-              onSelected: (value) {
+              onSelected: (value) async {
                 if (value == 'edit') {
-                  Navigator.pushNamed(
+                  final result = await Navigator.pushNamed(
                     context,
-                    '/add-service',
+                    '/edit-service',
                     arguments: service,
                   );
+                  if (result == true) {
+                    _fetchServices();
+                  }
                 } else if (value == 'delete') {
                   _confirmDelete(service);
                 } else if (value == 'toggle') {

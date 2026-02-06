@@ -48,15 +48,33 @@ class BookingService {
     try {
       final response = await _supabase
           .from(SupabaseConfig.bookingsTable)
-          .select()
+          .select(
+            '*, service:services(name, image_url), provider:users!bookings_provider_id_fkey(full_name)',
+          )
           .eq('customer_id', customerId)
           .order('booking_date', ascending: false);
 
+      return (response as List).map((item) {
+        final data = Map<String, dynamic>.from(item);
+        if (data['service'] != null) {
+          data['service_name'] = data['service']['name'];
+          data['service_image'] = data['service']['image_url'];
+        }
+        if (data['provider'] != null) {
+          data['provider_name'] = data['provider']['full_name'];
+        }
+        return BookingModel.fromJson(data);
+      }).toList();
+    } catch (e) {
+      debugPrint('Error loading customer bookings: $e');
+      final response = await _supabase
+          .from(SupabaseConfig.bookingsTable)
+          .select()
+          .eq('customer_id', customerId)
+          .order('booking_date', ascending: false);
       return (response as List)
           .map((item) => BookingModel.fromJson(item))
           .toList();
-    } catch (e) {
-      throw Exception('Failed to load bookings: $e');
     }
   }
 
@@ -72,7 +90,6 @@ class BookingService {
 
       return (response as List).map((item) {
         final data = Map<String, dynamic>.from(item);
-        // Flatten the joined data
         if (data['service'] != null) {
           data['service_name'] = data['service']['name'];
           data['service_image'] = data['service']['image_url'];
@@ -83,13 +100,16 @@ class BookingService {
         return BookingModel.fromJson(data);
       }).toList();
     } catch (e) {
-      debugPrint('Error loading provider bookings: $e');
-      // If joined query fails, try a simple query as fallback
+      debugPrint('Error loading provider bookings with joins: $e');
+      // If joined query fails, try to fetch with explicit columns to skip any schema cache issues
       final response = await _supabase
           .from(SupabaseConfig.bookingsTable)
-          .select()
+          .select(
+            'id, service_id, customer_id, provider_id, status, booking_date, notes, total_amount, created_at',
+          )
           .eq('provider_id', providerId)
           .order('booking_date', ascending: false);
+
       return (response as List)
           .map((item) => BookingModel.fromJson(item))
           .toList();
@@ -133,7 +153,9 @@ class BookingService {
           .from(SupabaseConfig.bookingsTable)
           .update({'status': status.toString().split('.').last})
           .eq('id', bookingId)
-          .select()
+          .select(
+            'id, service_id, customer_id, provider_id, status, booking_date, notes, total_amount, created_at',
+          )
           .single();
 
       return BookingModel.fromJson(response);
@@ -145,18 +167,39 @@ class BookingService {
   // Update booking status with string (for provider screens)
   Future<void> changeBookingStatus(String bookingId, String status) async {
     try {
-      // 1. Update the booking status
-      final response = await _supabase
-          .from(SupabaseConfig.bookingsTable)
-          .update({
-            'status': status,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', bookingId)
-          .select()
-          .single();
+      Map<String, dynamic> data;
+      const String bookingColumns =
+          'id, service_id, customer_id, provider_id, status, booking_date, notes, total_amount, created_at';
+      try {
+        final response = await _supabase
+            .from(SupabaseConfig.bookingsTable)
+            .update({'status': status})
+            .eq('id', bookingId)
+            .select(
+              '$bookingColumns, service:services(name, image_url), customer:users!bookings_customer_id_fkey(full_name)',
+            )
+            .single();
+        data = Map<String, dynamic>.from(response);
+      } catch (e) {
+        debugPrint('Update with joins failed, falling back: $e');
+        final response = await _supabase
+            .from(SupabaseConfig.bookingsTable)
+            .update({'status': status})
+            .eq('id', bookingId)
+            .select(bookingColumns)
+            .single();
+        data = Map<String, dynamic>.from(response);
+      }
 
-      final booking = BookingModel.fromJson(response);
+      if (data['service'] != null) {
+        data['service_name'] = data['service']['name'];
+        data['service_image'] = data['service']['image_url'];
+      }
+      if (data['customer'] != null) {
+        data['customer_name'] = data['customer']['full_name'];
+      }
+
+      final booking = BookingModel.fromJson(data);
 
       // 2. Create notification for the customer
       final notificationService = NotificationService();

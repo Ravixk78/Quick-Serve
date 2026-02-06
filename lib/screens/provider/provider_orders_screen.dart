@@ -506,7 +506,7 @@ class _ProviderOrdersScreenState extends State<ProviderOrdersScreen>
         context: context,
         builder: (context) => AlertDialog(
           title: Text('Confirm ${_getStatusLabel(newStatus)}'),
-          content: Text('Are you sure you want to ${newStatus} this order?'),
+          content: Text('Are you sure you want to $newStatus this order?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),

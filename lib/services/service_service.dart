@@ -4,6 +4,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/service_model.dart';
 
+const String _serviceColumns =
+    'id, name, description, price, category_id, provider_id, provider_name, duration, image_url, rating, review_count, is_active, created_at';
+const String _categoryColumns = 'id, name, icon, description, created_at';
+
 class ServiceService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -66,7 +70,7 @@ class ServiceService {
       final response = await _supabase
           .from(SupabaseConfig.servicesTable)
           .insert(serviceData)
-          .select()
+          .select(_serviceColumns)
           .single();
 
       debugPrint('Service created: ${response['id']}');
@@ -82,7 +86,7 @@ class ServiceService {
     try {
       final response = await _supabase
           .from(SupabaseConfig.categoriesTable)
-          .select()
+          .select(_categoryColumns)
           .order('name');
 
       return (response as List)
@@ -98,7 +102,7 @@ class ServiceService {
     try {
       final response = await _supabase
           .from(SupabaseConfig.servicesTable)
-          .select()
+          .select(_serviceColumns)
           .eq('is_active', true)
           .order('created_at', ascending: false);
 
@@ -115,7 +119,7 @@ class ServiceService {
     try {
       final response = await _supabase
           .from(SupabaseConfig.servicesTable)
-          .select()
+          .select(_serviceColumns)
           .eq('category_id', categoryId)
           .eq('is_active', true)
           .order('name');
@@ -133,7 +137,7 @@ class ServiceService {
     try {
       final response = await _supabase
           .from(SupabaseConfig.servicesTable)
-          .select()
+          .select(_serviceColumns)
           .eq('id', serviceId)
           .single();
 
@@ -148,7 +152,7 @@ class ServiceService {
     try {
       final response = await _supabase
           .from(SupabaseConfig.servicesTable)
-          .select()
+          .select(_serviceColumns)
           .ilike('name', '%$query%')
           .eq('is_active', true)
           .order('name');
@@ -166,7 +170,7 @@ class ServiceService {
     try {
       final response = await _supabase
           .from(SupabaseConfig.servicesTable)
-          .select()
+          .select(_serviceColumns)
           .eq('is_active', true)
           .order('rating', ascending: false)
           .limit(limit);
@@ -184,7 +188,7 @@ class ServiceService {
     try {
       final response = await _supabase
           .from(SupabaseConfig.servicesTable)
-          .select()
+          .select(_serviceColumns)
           .eq('provider_id', providerId)
           .order('created_at', ascending: false);
 
@@ -202,7 +206,7 @@ class ServiceService {
     String? name,
     String? description,
     double? price,
-    int? duration,
+    String? duration,
     String? imageUrl,
   }) async {
     try {
@@ -212,14 +216,14 @@ class ServiceService {
       if (price != null) updateData['price'] = price;
       if (duration != null) updateData['duration'] = duration;
       if (imageUrl != null) updateData['image_url'] = imageUrl;
-      updateData['updated_at'] = DateTime.now().toIso8601String();
+      // Note: Removed updated_at as it may not exist in the services table schema
 
       debugPrint('Updating service: $serviceId');
       final response = await _supabase
           .from(SupabaseConfig.servicesTable)
           .update(updateData)
           .eq('id', serviceId)
-          .select()
+          .select(_serviceColumns)
           .single();
 
       debugPrint('Service updated: ${response['id']}');
@@ -256,10 +260,10 @@ class ServiceService {
           .from(SupabaseConfig.servicesTable)
           .update({
             'is_active': isActive,
-            'updated_at': DateTime.now().toIso8601String(),
+            // Note: Removed updated_at as it may not exist in the services table schema
           })
           .eq('id', serviceId)
-          .select()
+          .select(_serviceColumns)
           .single();
 
       return ServiceModel.fromJson(response);

@@ -393,7 +393,7 @@ class EnhancedSettingsScreen extends StatelessWidget {
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: AppTheme.premiumGold,
+        activeThumbColor: AppTheme.premiumGold,
       ),
     );
   }

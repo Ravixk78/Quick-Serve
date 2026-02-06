@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/supabase_config.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/navigation_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/bookings/booking_screen.dart';
@@ -15,10 +16,10 @@ import 'screens/services/service_list_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/services/add_service_screen.dart';
-import 'screens/services/edit_service_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'theme/app_theme.dart';
 import 'models/service_model.dart';
+import 'services/local_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,9 @@ void main() async {
     debugPrint('Supabase initialization error: $e');
   }
 
+  // Initialize notifications
+  await LocalNotificationService.initialize();
+
   runApp(MyApp(isSupabaseConfigured: isSupabaseConfigured));
 }
 
@@ -50,6 +54,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => NavigationProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
@@ -59,6 +64,7 @@ class MyApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
+            navigatorKey: LocalNotificationService.navigatorKey,
             initialRoute: '/',
             builder: (context, child) {
               if (!isSupabaseConfigured) {
@@ -116,9 +122,9 @@ class MyApp extends StatelessWidget {
                     builder: (_) => const ForgotPasswordScreen(),
                   );
                 case '/edit-service':
-                  final service = settings.arguments as ServiceModel;
                   return MaterialPageRoute(
-                    builder: (_) => EditServiceScreen(service: service),
+                    builder: (_) => const AddServiceScreen(),
+                    settings: settings,
                   );
                 default:
                   return MaterialPageRoute(

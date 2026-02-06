@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/navigation_provider.dart';
 import 'home/home_screen.dart';
 import 'bookings/my_bookings_screen.dart';
 import 'notifications/notifications_screen.dart';
@@ -16,7 +17,6 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
   int _providerOrdersTabIndex = 0;
 
   @override
@@ -27,9 +27,7 @@ class _MainScreenState extends State<MainScreen> {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null && args.containsKey('index')) {
-        setState(() {
-          _currentIndex = args['index'] as int;
-        });
+        context.read<NavigationProvider>().setIndex(args['index'] as int);
       }
     });
   }
@@ -50,12 +48,12 @@ class _MainScreenState extends State<MainScreen> {
         ? [
             ProviderHomeScreen(
               onSwitchTab: (index, {int subIndex = 0}) {
-                setState(() {
-                  _currentIndex = index;
-                  if (index == 1) {
+                context.read<NavigationProvider>().setIndex(index);
+                if (index == 1) {
+                  setState(() {
                     _providerOrdersTabIndex = subIndex;
-                  }
-                });
+                  });
+                }
               },
             ),
             ProviderOrdersScreen(
@@ -67,8 +65,10 @@ class _MainScreenState extends State<MainScreen> {
           ]
         : _screens;
 
+    final navProvider = Provider.of<NavigationProvider>(context);
+
     return Scaffold(
-      body: screens[_currentIndex],
+      body: screens[navProvider.currentIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -80,11 +80,9 @@ class _MainScreenState extends State<MainScreen> {
           ],
         ),
         child: BottomNavigationBar(
-          currentIndex: _currentIndex,
+          currentIndex: navProvider.currentIndex,
           onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
+            navProvider.setIndex(index);
           },
           items: [
             BottomNavigationBarItem(
