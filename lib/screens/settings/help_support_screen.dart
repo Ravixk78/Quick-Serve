@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({super.key});
+
+  String? encodeQueryParameters(Map<String, String> params) {
+    return params.entries
+        .map(
+          (MapEntry<String, String> e) =>
+              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
+        )
+        .join('&');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,14 +57,14 @@ class HelpSupportScreen extends StatelessWidget {
             _buildSupportCard(
               context,
               'Email Us',
-              'support@quickserve.com',
+              'ravindukushan78@gmail.com',
               Icons.email_outlined,
               Colors.green,
             ),
             _buildSupportCard(
               context,
               'Call Us',
-              '+94 112 345 678',
+              '0704126703',
               Icons.phone_outlined,
               Colors.purple,
             ),
@@ -119,8 +129,51 @@ class HelpSupportScreen extends StatelessWidget {
             style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
           ),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-          onTap: () {
-            // Implementation for support
+          onTap: () async {
+            if (title == 'Email Us') {
+              final Uri emailLaunchUri = Uri(
+                scheme: 'mailto',
+                path: subtitle.trim(),
+                query: encodeQueryParameters({
+                  'subject': 'Support Request - QuickServe',
+                }),
+              );
+              try {
+                if (await canLaunchUrl(emailLaunchUri)) {
+                  await launchUrl(emailLaunchUri);
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Could not launch email app'),
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                debugPrint('Error launching email: $e');
+              }
+            } else if (title == 'Call Us') {
+              final Uri phoneUri = Uri(
+                scheme: 'tel',
+                path: subtitle.replaceAll(' ', ''),
+              );
+              try {
+                if (await canLaunchUrl(phoneUri)) {
+                  await launchUrl(phoneUri);
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Could not launch phone app'),
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                debugPrint('Error launching phone: $e');
+              }
+            }
           },
         ),
       ),

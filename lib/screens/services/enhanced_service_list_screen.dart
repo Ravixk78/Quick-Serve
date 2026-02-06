@@ -228,7 +228,7 @@ class _EnhancedServiceListScreenState extends State<EnhancedServiceListScreen> {
   Widget _buildServiceCard(ServiceModel service, bool isDark) {
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(context, '/service-detail', arguments: service);
+        Navigator.pushNamed(context, '/service-details', arguments: service);
       },
       child: Container(
         decoration: BoxDecoration(

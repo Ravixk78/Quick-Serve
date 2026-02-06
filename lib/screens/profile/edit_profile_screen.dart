@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/validators.dart';
 import '../../widgets/custom_button.dart';
@@ -64,13 +65,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      String? profileImageUrl = _profileImagePath;
+
+      // Check if the image matches the one in AuthProvider (meaning it hasn't changed)
+      // If it's a local file path (doesn't start with http), we need to upload it
+      if (_profileImagePath != null && !_profileImagePath!.startsWith('http')) {
+        try {
+          final authService = AuthService();
+          // Get current user ID
+          final userId = authProvider.currentUser?.id;
+          if (userId != null) {
+            profileImageUrl = await authService.uploadProfileImage(
+              File(_profileImagePath!),
+              userId,
+            );
+          }
+        } catch (e) {
+          debugPrint('Image upload failed: $e');
+          // Proceed without image update or show error
+          throw Exception('Failed to upload image: $e');
+        }
+      }
 
       final success = await authProvider.updateProfile(
         fullName: _fullNameController.text.trim(),
         phoneNumber: _phoneController.text.trim().isNotEmpty
             ? _phoneController.text.trim()
             : null,
-        profileImage: _profileImagePath,
+        profileImage: profileImageUrl,
       );
 
       setState(() => _isLoading = false);
@@ -160,7 +182,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             0.2,
                           ),
                           backgroundImage: _profileImagePath != null
-                              ? NetworkImage(_profileImagePath!)
+                              ? (_profileImagePath!.startsWith('http')
+                                    ? NetworkImage(_profileImagePath!)
+                                    : FileImage(File(_profileImagePath!))
+                                          as ImageProvider)
                               : null,
                           child: _profileImagePath == null
                               ? Icon(

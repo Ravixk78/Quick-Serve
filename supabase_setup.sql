@@ -55,7 +55,7 @@ insert into storage.buckets (id, name, public)
 values ('services', 'services', true)
 on conflict (id) do nothing;
 
--- 5. Set up Storage Policies (Allow public read, allow authenticated upload)
+-- 5. Set up Storage Policies for Services
 create policy "Public Access"
   on storage.objects for select
   using ( bucket_id = 'services' );
@@ -67,6 +67,30 @@ create policy "Authenticated Upload"
 create policy "Authenticated Update"
   on storage.objects for update
   with check ( bucket_id = 'services' and auth.role() = 'authenticated' );
+
+-- 5.1 Create the Storage Bucket for Profile Images
+insert into storage.buckets (id, name, public)
+values ('profiles', 'profiles', true)
+on conflict (id) do nothing;
+
+-- 5.2 Set up Storage Policies for Profiles
+create policy "Public Profile Access"
+  on storage.objects for select
+  using ( bucket_id = 'profiles' );
+
+create policy "Users can upload their own profile image"
+  on storage.objects for insert
+  with check ( 
+    bucket_id = 'profiles' AND 
+    (storage.foldername(name))[1] = auth.uid()::text 
+  );
+
+create policy "Users can update their own profile image"
+  on storage.objects for update
+  using ( 
+    bucket_id = 'profiles' AND 
+    (storage.foldername(name))[1] = auth.uid()::text 
+  );
 
 -- 6. Create Services Table (if not exists)
 create table if not exists public.services (

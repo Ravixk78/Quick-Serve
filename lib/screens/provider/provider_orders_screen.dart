@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
@@ -8,7 +9,13 @@ import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 
 class ProviderOrdersScreen extends StatefulWidget {
-  const ProviderOrdersScreen({super.key});
+  final String providerId;
+  final int initialTabIndex;
+  const ProviderOrdersScreen({
+    super.key,
+    required this.providerId,
+    this.initialTabIndex = 0,
+  });
 
   @override
   State<ProviderOrdersScreen> createState() => _ProviderOrdersScreenState();
@@ -20,22 +27,42 @@ class _ProviderOrdersScreenState extends State<ProviderOrdersScreen>
   final BookingService _bookingService = BookingService();
   List<BookingModel> _allBookings = [];
   bool _isLoading = true;
+  StreamSubscription? _bookingSubscription;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(
+      length: 5,
+      vsync: this,
+      initialIndex: widget.initialTabIndex,
+    );
+    _setupRealtime();
     _loadOrders();
+  }
+
+  void _setupRealtime() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final providerId = authProvider.currentUser?.id;
+    if (providerId != null) {
+      _bookingSubscription = _bookingService
+          .getProviderBookingsStream(providerId)
+          .listen((_) {
+            debugPrint('Real-time update: refreshing orders...');
+            _loadOrders(showLoading: false);
+          });
+    }
   }
 
   @override
   void dispose() {
+    _bookingSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadOrders() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadOrders({bool showLoading = true}) async {
+    if (showLoading) setState(() => _isLoading = true);
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final providerId = authProvider.currentUser?.id;
@@ -58,7 +85,7 @@ class _ProviderOrdersScreenState extends State<ProviderOrdersScreen>
   }
 
   List<BookingModel> _filterBookingsByStatus(String status) {
-    return _allBookings.where((b) => b.status == status).toList();
+    return _allBookings.where((b) => b.status.name == status).toList();
   }
 
   @override
@@ -89,18 +116,23 @@ class _ProviderOrdersScreenState extends State<ProviderOrdersScreen>
           indicatorColor: AppTheme.premiumGold,
           labelColor: AppTheme.premiumGold,
           unselectedLabelColor: isDark ? Colors.white60 : Colors.black54,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          tabs: const [
-            Tab(text: 'Pending'),
-            Tab(text: 'Confirmed'),
-            Tab(text: 'On Hold'),
-            Tab(text: 'Completed'),
-            Tab(text: 'Cancelled'),
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+          tabs: [
+            _buildTab('Pending', 'pending'),
+            _buildTab('Confirmed', 'confirmed'),
+            _buildTab('On Hold', 'on_hold'),
+            _buildTab('Completed', 'completed'),
+            _buildTab('Cancelled', 'cancelled'),
           ],
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.premiumGold),
+            )
           : TabBarView(
               controller: _tabController,
               children: [
@@ -111,6 +143,34 @@ class _ProviderOrdersScreenState extends State<ProviderOrdersScreen>
                 _buildOrdersList(_filterBookingsByStatus('cancelled')),
               ],
             ),
+    );
+  }
+
+  Tab _buildTab(String label, String status) {
+    final count = _filterBookingsByStatus(status).length;
+    return Tab(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          if (count > 0) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: status == 'pending'
+                    ? Colors.orange
+                    : AppTheme.premiumGold,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -137,9 +197,10 @@ class _ProviderOrdersScreenState extends State<ProviderOrdersScreen>
         padding: const EdgeInsets.all(16),
         itemCount: bookings.length,
         itemBuilder: (context, index) {
+          final booking = bookings[index];
           return FadeInUp(
-            duration: Duration(milliseconds: 300 + (index * 50)),
-            child: _buildOrderCard(bookings[index]),
+            delay: Duration(milliseconds: index * 100),
+            child: _buildOrderCard(booking),
           );
         },
       ),
@@ -149,192 +210,224 @@ class _ProviderOrdersScreenState extends State<ProviderOrdersScreen>
   Widget _buildOrderCard(BookingModel booking) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Order Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _getStatusColor(booking.status.name).withOpacity(0.1),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
+    return GestureDetector(
+      onTap: () => _showOrderActions(booking),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkCard : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  _getStatusIcon(booking.status.name),
-                  color: _getStatusColor(booking.status.name),
-                  size: 24,
+          ],
+        ),
+        child: Column(
+          children: [
+            // Order Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _getStatusColor(booking.status.name).withOpacity(0.1),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Order #${booking.id.substring(0, 8).toUpperCase()}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: isDark ? Colors.white : AppTheme.primaryNavy,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        DateFormat(
-                          'MMM dd, yyyy • hh:mm a',
-                        ).format(booking.createdAt),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.white60 : Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _getStatusIcon(booking.status.name),
                     color: _getStatusColor(booking.status.name),
-                    borderRadius: BorderRadius.circular(20),
+                    size: 24,
                   ),
-                  child: Text(
-                    _getStatusLabel(booking.status.name),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Order #${booking.id.substring(0, 8).toUpperCase()}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: isDark ? Colors.white : AppTheme.primaryNavy,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          DateFormat(
+                            'MMM dd, yyyy • hh:mm a',
+                          ).format(booking.createdAt),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          // Order Details
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildDetailRow(
-                  Icons.person_outline,
-                  'Customer',
-                  'Customer Name',
-                ),
-                const SizedBox(height: 12),
-                _buildDetailRow(
-                  Icons.calendar_today_outlined,
-                  'Booking Date',
-                  DateFormat('MMM dd, yyyy').format(booking.bookingDate),
-                ),
-                const SizedBox(height: 12),
-                _buildDetailRow(
-                  Icons.attach_money_outlined,
-                  'Amount',
-                  'LKR ${booking.totalAmount.toStringAsFixed(2)}',
-                ),
-                if (booking.notes != null && booking.notes!.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  _buildDetailRow(Icons.note_outlined, 'Notes', booking.notes!),
-                ],
-              ],
-            ),
-          ),
-
-          // Action Buttons (based on status)
-          if (booking.status == BookingStatus.pending)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildActionButton(
-                      label: 'Confirm',
-                      icon: Icons.check_circle_outline,
-                      color: AppTheme.accentGreen,
-                      onTap: () => _updateOrderStatus(booking.id, 'confirmed'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildActionButton(
-                      label: 'Hold',
-                      icon: Icons.pause_circle_outline,
-                      color: Colors.orange,
-                      onTap: () => _updateOrderStatus(booking.id, 'on_hold'),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(booking.status.name),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildActionButton(
-                      label: 'Cancel',
-                      icon: Icons.cancel_outlined,
-                      color: AppTheme.errorColor,
-                      onTap: () => _updateOrderStatus(booking.id, 'cancelled'),
+                    child: Text(
+                      _getStatusLabel(booking.status.name),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-          // Complete/Cancel Button (for confirmed orders)
-          if (booking.status == BookingStatus.confirmed ||
-              booking.status == BookingStatus.on_hold)
+            // Order Details
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 children: [
-                  if (booking.status == BookingStatus.on_hold)
+                  _buildDetailRow(
+                    Icons.person_outline,
+                    'Customer',
+                    booking.customerName ?? 'Guest User',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    Icons.handyman_outlined,
+                    'Service',
+                    booking.serviceName ?? 'General Service',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    Icons.calendar_today_outlined,
+                    'Booking Date',
+                    DateFormat('MMM dd, yyyy').format(booking.bookingDate),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    Icons.attach_money_outlined,
+                    'Amount',
+                    'LKR ${booking.totalAmount.toStringAsFixed(2)}',
+                  ),
+                  if (booking.notes != null && booking.notes!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _buildDetailRow(
+                      Icons.note_outlined,
+                      'Notes',
+                      booking.notes!,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // Action Buttons: Confirm, Hold, Cancel (For Pending Orders)
+            if (booking.status == BookingStatus.pending)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Row(
+                  children: [
                     Expanded(
                       child: _buildActionButton(
-                        label: 'Resume (Confirm)',
-                        icon: Icons.play_circle_outline,
-                        color: AppTheme.infoColor,
+                        label: 'Confirm',
+                        icon: Icons.check_circle_outline,
+                        color: AppTheme.accentGreen,
                         onTap: () =>
                             _updateOrderStatus(booking.id, 'confirmed'),
                       ),
-                    )
-                  else
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: _buildActionButton(
-                        label: 'Complete Order',
-                        icon: Icons.check_circle,
+                        label: 'Hold',
+                        icon: Icons.pause_circle_outline,
+                        color: Colors.orange,
+                        onTap: () => _updateOrderStatus(booking.id, 'on_hold'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildActionButton(
+                        label: 'Cancel',
+                        icon: Icons.cancel_outlined,
+                        color: AppTheme.errorColor,
+                        onTap: () =>
+                            _updateOrderStatus(booking.id, 'cancelled'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Confirmed Orders: Complete or Hold
+            if (booking.status == BookingStatus.confirmed)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionButton(
+                        label: 'Complete',
+                        icon: Icons.done_all,
                         color: AppTheme.accentGreen,
                         onTap: () =>
                             _updateOrderStatus(booking.id, 'completed'),
                       ),
                     ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildActionButton(
-                      label: 'Cancel',
-                      icon: Icons.cancel_outlined,
-                      color: AppTheme.errorColor,
-                      onTap: () => _updateOrderStatus(booking.id, 'cancelled'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildActionButton(
+                        label: 'Hold',
+                        icon: Icons.pause_circle_outline,
+                        color: Colors.orange,
+                        onTap: () => _updateOrderStatus(booking.id, 'on_hold'),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-        ],
+
+            // On Hold Orders: Resume (Confirm) or Cancel
+            if (booking.status == BookingStatus.on_hold)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionButton(
+                        label: 'Resume',
+                        icon: Icons.play_circle_outline,
+                        color: AppTheme.infoColor,
+                        onTap: () =>
+                            _updateOrderStatus(booking.id, 'confirmed'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildActionButton(
+                        label: 'Cancel',
+                        icon: Icons.cancel_outlined,
+                        color: AppTheme.errorColor,
+                        onTap: () =>
+                            _updateOrderStatus(booking.id, 'cancelled'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -489,6 +582,143 @@ class _ProviderOrdersScreenState extends State<ProviderOrdersScreen>
       default:
         return Icons.info_outline;
     }
+  }
+
+  void _showOrderActions(BookingModel booking) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Order Actions',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : AppTheme.primaryNavy,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Select an action for Order #${booking.id.substring(0, 8).toUpperCase()}',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 24),
+            if (booking.status == BookingStatus.pending) ...[
+              _buildListAction(
+                'Confirm Order',
+                Icons.check_circle_outline,
+                AppTheme.accentGreen,
+                () {
+                  Navigator.pop(context);
+                  _updateOrderStatus(booking.id, 'confirmed');
+                },
+              ),
+              _buildListAction(
+                'Put on Hold',
+                Icons.pause_circle_outline,
+                Colors.orange,
+                () {
+                  Navigator.pop(context);
+                  _updateOrderStatus(booking.id, 'on_hold');
+                },
+              ),
+              _buildListAction(
+                'Cancel Order',
+                Icons.cancel_outlined,
+                AppTheme.errorColor,
+                () {
+                  Navigator.pop(context);
+                  _updateOrderStatus(booking.id, 'cancelled');
+                },
+              ),
+            ],
+            if (booking.status == BookingStatus.confirmed) ...[
+              _buildListAction(
+                'Complete Order',
+                Icons.done_all,
+                AppTheme.accentGreen,
+                () {
+                  Navigator.pop(context);
+                  _updateOrderStatus(booking.id, 'completed');
+                },
+              ),
+              _buildListAction(
+                'Put on Hold',
+                Icons.pause_circle_outline,
+                Colors.orange,
+                () {
+                  Navigator.pop(context);
+                  _updateOrderStatus(booking.id, 'on_hold');
+                },
+              ),
+            ],
+            if (booking.status == BookingStatus.on_hold) ...[
+              _buildListAction(
+                'Resume Order',
+                Icons.play_circle_outline,
+                AppTheme.infoColor,
+                () {
+                  Navigator.pop(context);
+                  _updateOrderStatus(booking.id, 'confirmed');
+                },
+              ),
+              _buildListAction(
+                'Cancel Order',
+                Icons.cancel_outlined,
+                AppTheme.errorColor,
+                () {
+                  Navigator.pop(context);
+                  _updateOrderStatus(booking.id, 'cancelled');
+                },
+              ),
+            ],
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListAction(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black87,
+        ),
+      ),
+      onTap: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
   }
 
   String _getStatusLabel(String status) {

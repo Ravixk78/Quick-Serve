@@ -179,12 +179,41 @@ class ServiceService {
     }
   }
 
+  // Get services for a specific provider
+  Future<List<ServiceModel>> getProviderServices(String providerId) async {
+    try {
+      final response = await _supabase
+          .from(SupabaseConfig.servicesTable)
+          .select()
+          .eq('provider_id', providerId)
+          .order('created_at', ascending: false);
+
+      return (response as List)
+          .map((item) => ServiceModel.fromJson(item))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to load your services: $e');
+    }
+  }
+
   // Update existing service
   Future<ServiceModel> updateService({
     required String serviceId,
-    required Map<String, dynamic> updateData,
+    String? name,
+    String? description,
+    double? price,
+    int? duration,
+    String? imageUrl,
   }) async {
     try {
+      final updateData = <String, dynamic>{};
+      if (name != null) updateData['name'] = name;
+      if (description != null) updateData['description'] = description;
+      if (price != null) updateData['price'] = price;
+      if (duration != null) updateData['duration'] = duration;
+      if (imageUrl != null) updateData['image_url'] = imageUrl;
+      updateData['updated_at'] = DateTime.now().toIso8601String();
+
       debugPrint('Updating service: $serviceId');
       final response = await _supabase
           .from(SupabaseConfig.servicesTable)
@@ -198,6 +227,45 @@ class ServiceService {
     } catch (e) {
       debugPrint('Service update failed: $e');
       throw Exception('Failed to update service: $e');
+    }
+  }
+
+  // Delete service
+  Future<void> deleteService(String serviceId) async {
+    try {
+      debugPrint('Deleting service: $serviceId');
+      await _supabase
+          .from(SupabaseConfig.servicesTable)
+          .delete()
+          .eq('id', serviceId);
+      debugPrint('Service deleted successfully');
+    } catch (e) {
+      debugPrint('Service deletion failed: $e');
+      throw Exception('Failed to delete service: $e');
+    }
+  }
+
+  // Publish/Unpublish service (Toggle active state)
+  Future<ServiceModel> toggleServiceStatus(
+    String serviceId,
+    bool isActive,
+  ) async {
+    try {
+      debugPrint('Toggling service status: $serviceId to $isActive');
+      final response = await _supabase
+          .from(SupabaseConfig.servicesTable)
+          .update({
+            'is_active': isActive,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', serviceId)
+          .select()
+          .single();
+
+      return ServiceModel.fromJson(response);
+    } catch (e) {
+      debugPrint('Status toggle failed: $e');
+      throw Exception('Failed to update service status: $e');
     }
   }
 }

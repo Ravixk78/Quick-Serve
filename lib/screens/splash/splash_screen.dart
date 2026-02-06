@@ -45,13 +45,17 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    await Future.delayed(const Duration(seconds: 3));
+    // Wait for animation
+    await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final isLoggedIn = await authProvider.checkAuth();
 
-    if (authProvider.isLoggedIn) {
+    if (!mounted) return;
+
+    if (isLoggedIn) {
       Navigator.pushReplacementNamed(context, '/main');
     } else {
       Navigator.pushReplacementNamed(context, '/onboarding');
@@ -100,7 +104,9 @@ class _SplashScreenState extends State<SplashScreen>
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withAlpha((0.2 * 255).toInt()),
+                              color: Colors.black.withAlpha(
+                                (0.2 * 255).toInt(),
+                              ),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),

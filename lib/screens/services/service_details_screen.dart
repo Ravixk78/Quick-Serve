@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/service_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
@@ -45,12 +46,32 @@ class ServiceDetailsScreen extends StatelessWidget {
                   ),
                 ),
                 child: Center(
-                  child: ZoomIn(
-                    child: AnimatedServiceIcon(
-                      category: service.name.split(' ').first,
-                      size: 100,
-                    ),
-                  ),
+                  child: service.imageUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: CachedNetworkImage(
+                            imageUrl: service.imageUrl!,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                            ),
+                            errorWidget: (context, url, error) =>
+                                AnimatedServiceIcon(
+                                  category: service.name.split(' ').first,
+                                  size: 100,
+                                ),
+                          ),
+                        )
+                      : ZoomIn(
+                          child: AnimatedServiceIcon(
+                            category: service.name.split(' ').first,
+                            size: 100,
+                          ),
+                        ),
                 ),
               ),
             ),

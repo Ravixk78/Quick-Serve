@@ -86,17 +86,13 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
         }
       }
 
-      final updateData = {
-        'name': _nameController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'price': double.parse(_priceController.text),
-        'duration': _durationController.text.trim(),
-        'image_url': imageUrl,
-      };
-
       await _serviceService.updateService(
         serviceId: widget.service.id,
-        updateData: updateData,
+        name: _nameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        price: double.parse(_priceController.text),
+        duration: int.tryParse(_durationController.text.trim()),
+        imageUrl: imageUrl,
       );
 
       if (!mounted) return;

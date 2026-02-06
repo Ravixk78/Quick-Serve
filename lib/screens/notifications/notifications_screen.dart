@@ -6,14 +6,20 @@ import '../../services/notification_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  final _notificationService = NotificationService();
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final userId = authProvider.currentUser?.id;
-    final notificationService = NotificationService();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (userId == null) {
@@ -31,7 +37,7 @@ class NotificationsScreen extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => notificationService.markAllAsRead(userId),
+            onPressed: () => _notificationService.markAllAsRead(userId),
             child: const Text(
               'Mark all as read',
               style: TextStyle(color: AppTheme.premiumGold),
@@ -40,7 +46,7 @@ class NotificationsScreen extends StatelessWidget {
         ],
       ),
       body: StreamBuilder<List<NotificationModel>>(
-        stream: notificationService.getNotificationStream(userId),
+        stream: _notificationService.getNotificationStream(userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -83,7 +89,7 @@ class NotificationsScreen extends StatelessWidget {
                 delay: Duration(milliseconds: index * 100),
                 child: _NotificationCard(
                   notification: notification,
-                  onTap: () => notificationService.markAsRead(notification.id),
+                  onTap: () => _notificationService.markAsRead(notification.id),
                 ),
               );
             },

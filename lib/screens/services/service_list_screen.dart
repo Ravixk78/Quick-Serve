@@ -3,217 +3,78 @@ import 'package:animate_do/animate_do.dart';
 import '../../models/service_model.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/animated_service_icon.dart';
+import '../../services/service_service.dart';
 
 class ServiceListScreen extends StatefulWidget {
   final String? categoryId;
   final String? searchQuery;
+  final String? providerId;
 
-  const ServiceListScreen({super.key, this.categoryId, this.searchQuery});
+  const ServiceListScreen({
+    super.key,
+    this.categoryId,
+    this.searchQuery,
+    this.providerId,
+  });
 
   @override
   State<ServiceListScreen> createState() => _ServiceListScreenState();
 }
 
 class _ServiceListScreenState extends State<ServiceListScreen> {
-  final List<ServiceModel> _allServices = [
-    // 1. Cleaning
-    ServiceModel(
-      id: '00000000-0000-0000-0001-000000000001',
-      name: 'Deep Home Cleaning',
-      description: 'Intensive cleaning for every corner of your house.',
-      price: 4500.0,
-      categoryId: '1',
-      providerId: '00000000-0000-0000-0000-000000000010',
-      providerName: 'CleanPro Solutions',
-      rating: 4.8,
-      reviewCount: 210,
-      duration: '4-5 hours',
-      createdAt: DateTime.now(),
-    ),
-    ServiceModel(
-      id: '00000000-0000-0000-0001-000000000002',
-      name: 'Premium Office Cleaning',
-      description: 'Keep your workspace sparkling and professional.',
-      price: 8000.0,
-      categoryId: '1',
-      providerId: '00000000-0000-0000-0000-000000000010',
-      providerName: 'CleanPro Solutions',
-      rating: 4.9,
-      reviewCount: 156,
-      duration: '6 hours',
-      createdAt: DateTime.now(),
-    ),
+  final _serviceService = ServiceService();
+  List<ServiceModel> _services = [];
+  bool _isLoading = true;
 
-    // 2. Plumbing
-    ServiceModel(
-      id: '00000000-0000-0000-0002-000000000001',
-      name: 'Leak Detection & Fix',
-      description: 'Locate and repair underground or wall leaks.',
-      price: 2500.0,
-      categoryId: '2',
-      providerId: '00000000-0000-0000-0000-000000000011',
-      providerName: 'QuickFix Plumbers',
-      rating: 4.7,
-      reviewCount: 98,
-      duration: '2 hours',
-      createdAt: DateTime.now(),
-    ),
-    ServiceModel(
-      id: '00000000-0000-0000-0002-000000000002',
-      name: 'Full Bathroom Fitting',
-      description: 'Install new pipes, taps, and shower systems.',
-      price: 15000.0,
-      categoryId: '2',
-      providerId: '00000000-0000-0000-0000-000000000011',
-      providerName: 'QuickFix Plumbers',
-      rating: 5.0,
-      reviewCount: 45,
-      duration: '1 day',
-      createdAt: DateTime.now(),
-    ),
+  @override
+  void initState() {
+    super.initState();
+    _fetchServices();
+  }
 
-    // 3. Electrical
-    ServiceModel(
-      id: '00000000-0000-0000-0003-000000000001',
-      name: 'AC Unit Inverter Fix',
-      description: 'Specialized repair for modern AC inverter boards.',
-      price: 3500.0,
-      categoryId: '3',
-      providerId: '00000000-0000-0000-0000-000000000012',
-      providerName: 'ElectroSpark Masters',
-      rating: 4.6,
-      reviewCount: 112,
-      duration: '3 hours',
-      createdAt: DateTime.now(),
-    ),
-    ServiceModel(
-      id: '00000000-0000-0000-0003-000000000002',
-      name: 'Smart Home Wiring',
-      description: 'Ethernet, CCTV, and smart switch installations.',
-      price: 12000.0,
-      categoryId: '3',
-      providerId: '00000000-0000-0000-0000-000000000012',
-      providerName: 'ElectroSpark Masters',
-      rating: 4.9,
-      reviewCount: 67,
-      duration: '5 hours',
-      createdAt: DateTime.now(),
-    ),
+  Future<void> _fetchServices() async {
+    try {
+      List<ServiceModel> fetched;
+      if (widget.providerId != null) {
+        fetched = await _serviceService.getProviderServices(widget.providerId!);
+      } else if (widget.categoryId != null) {
+        fetched = await _serviceService.getServicesByCategory(
+          widget.categoryId!,
+        );
+      } else if (widget.searchQuery != null && widget.searchQuery!.isNotEmpty) {
+        fetched = await _serviceService.searchServices(widget.searchQuery!);
+      } else {
+        fetched = await _serviceService.getAllServices();
+      }
 
-    // 4. Carpentry
-    ServiceModel(
-      id: '00000000-0000-0000-0004-000000000001',
-      name: 'Custom Sofa Making',
-      description: 'Premium hardwood sofas with luxury fabric.',
-      price: 45000.0,
-      categoryId: '4',
-      providerId: '00000000-0000-0000-0000-000000000013',
-      providerName: 'Craftsman Woodwork',
-      rating: 4.8,
-      reviewCount: 32,
-      duration: '1 week',
-      createdAt: DateTime.now(),
-    ),
-    ServiceModel(
-      id: '00000000-0000-0000-0004-000000000002',
-      name: 'Door & Frame Repair',
-      description: 'Fixing squeaky doors or installing new ones.',
-      price: 5000.0,
-      categoryId: '4',
-      providerId: '00000000-0000-0000-0000-000000000013',
-      providerName: 'Craftsman Woodwork',
-      rating: 4.5,
-      reviewCount: 54,
-      duration: '4 hours',
-      createdAt: DateTime.now(),
-    ),
-
-    // 5. Painting
-    ServiceModel(
-      id: '00000000-0000-0000-0005-000000000001',
-      name: 'Full Interior Paint',
-      description: 'Sanding, base coat, and two finish coats.',
-      price: 20000.0,
-      categoryId: '5',
-      providerId: '00000000-0000-0000-0000-000000000014',
-      providerName: 'Artisan Finishers',
-      rating: 4.7,
-      reviewCount: 88,
-      duration: '3 days',
-      createdAt: DateTime.now(),
-    ),
-    ServiceModel(
-      id: '00000000-0000-0000-0005-000000000002',
-      name: 'Luxury Wall Texture',
-      description: 'Add 3D textures and patterns to your main walls.',
-      price: 12000.0,
-      categoryId: '5',
-      providerId: '00000000-0000-0000-0000-000000000014',
-      providerName: 'Artisan Finishers',
-      rating: 4.9,
-      reviewCount: 39,
-      duration: '1 day',
-      createdAt: DateTime.now(),
-    ),
-
-    // 6. Landscaping
-    ServiceModel(
-      id: '00000000-0000-0000-0006-000000000001',
-      name: 'Garden Re-design',
-      description: 'New plants, grass turfing, and lighting.',
-      price: 35000.0,
-      categoryId: '6',
-      providerId: '00000000-0000-0000-0000-000000000015',
-      providerName: 'GreenThumb Pro',
-      rating: 5.0,
-      reviewCount: 12,
-      duration: '4 days',
-      createdAt: DateTime.now(),
-    ),
-    ServiceModel(
-      id: '00000000-0000-0000-0006-000000000002',
-      name: 'Monthly Lawn Care',
-      description: 'Weed control, trimming, and fertilizing.',
-      price: 3500.0,
-      categoryId: '6',
-      providerId: '00000000-0000-0000-0000-000000000015',
-      providerName: 'GreenThumb Pro',
-      rating: 4.4,
-      reviewCount: 145,
-      duration: 'Monthly',
-      createdAt: DateTime.now(),
-    ),
-  ];
-
-  List<ServiceModel> get _filteredServices {
-    var list = _allServices;
-    if (widget.categoryId != null) {
-      list = list.where((s) => s.categoryId == widget.categoryId).toList();
+      if (mounted) {
+        setState(() {
+          _services = fetched;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching services: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-    if (widget.searchQuery != null && widget.searchQuery!.isNotEmpty) {
-      list = list
-          .where(
-            (s) => s.name.toLowerCase().contains(
-              widget.searchQuery!.toLowerCase(),
-            ),
-          )
-          .toList();
-    }
-    return list;
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final results = _filteredServices;
+    final results = _services;
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
       appBar: AppBar(
         title: Text(
-          widget.searchQuery != null
-              ? 'Search: ${widget.searchQuery}'
-              : 'Premium Services',
+          widget.providerId != null
+              ? 'My Listings'
+              : (widget.searchQuery != null
+                    ? 'Search: ${widget.searchQuery}'
+                    : 'Premium Services'),
           style: TextStyle(
             color: isDark ? Colors.white : AppTheme.primaryNavy,
             fontWeight: FontWeight.w900,
@@ -225,7 +86,11 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
           color: isDark ? Colors.white : AppTheme.primaryNavy,
         ),
       ),
-      body: results.isEmpty
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.premiumGold),
+            )
+          : results.isEmpty
           ? Center(
               child: Text(
                 'No services found',
@@ -241,7 +106,9 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
               itemBuilder: (context, index) {
                 return FadeInUp(
                   delay: Duration(milliseconds: index * 100),
-                  child: _buildServiceCardPremium(results[index]),
+                  child: widget.providerId != null
+                      ? _buildManagedServiceCard(results[index])
+                      : _buildServiceCardPremium(results[index]),
                 );
               },
             ),
@@ -363,5 +230,206 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildManagedServiceCard(ServiceModel service) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: service.isActive
+              ? Colors.transparent
+              : (isDark ? Colors.white10 : Colors.black12),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(isDark ? 50 : 10),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.all(16),
+            leading: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryNavy.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: AnimatedServiceIcon(
+                  category: service.name.split(' ').first,
+                  size: 30,
+                ),
+              ),
+            ),
+            title: Text(
+              service.name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text('LKR ${service.price.toStringAsFixed(0)}'),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: service.isActive
+                        ? AppTheme.accentGreen.withOpacity(0.1)
+                        : Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    service.isActive ? 'Published' : 'Hidden',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: service.isActive
+                          ? AppTheme.accentGreen
+                          : Colors.grey,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            trailing: PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'edit') {
+                  Navigator.pushNamed(
+                    context,
+                    '/add-service',
+                    arguments: service,
+                  );
+                } else if (value == 'delete') {
+                  _confirmDelete(service);
+                } else if (value == 'toggle') {
+                  _toggleServiceStatus(service);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_outlined, size: 20),
+                      SizedBox(width: 8),
+                      Text('Edit'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'toggle',
+                  child: Row(
+                    children: [
+                      Icon(
+                        service.isActive
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(service.isActive ? 'Unpublish' : 'Publish'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_outline,
+                        color: AppTheme.errorColor,
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Delete',
+                        style: TextStyle(color: AppTheme.errorColor),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(ServiceModel service) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Service'),
+        content: Text('Are you sure you want to delete "${service.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await _serviceService.deleteService(service.id);
+                _fetchServices();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Service deleted successfully'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorColor,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toggleServiceStatus(ServiceModel service) async {
+    try {
+      await _serviceService.toggleServiceStatus(service.id, !service.isActive);
+      _fetchServices();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              !service.isActive ? 'Service published' : 'Service unpublished',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+      }
+    }
   }
 }

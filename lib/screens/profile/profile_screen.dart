@@ -44,14 +44,22 @@ class ProfileScreen extends StatelessWidget {
                   backgroundColor: AppTheme.primaryColor.withAlpha(
                     (0.1 * 255).toInt(),
                   ),
-                  child: Text(
-                    user?.fullName.substring(0, 1).toUpperCase() ?? 'U',
-                    style: const TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
+                  backgroundImage:
+                      user?.profileImage != null &&
+                          user!.profileImage!.isNotEmpty
+                      ? NetworkImage(user.profileImage!)
+                      : null,
+                  child:
+                      user?.profileImage == null || user!.profileImage!.isEmpty
+                      ? Text(
+                          user?.fullName.substring(0, 1).toUpperCase() ?? 'U',
+                          style: const TextStyle(
+                            fontSize: 48,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.primaryColor,
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -135,7 +143,14 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.notifications_outlined,
             title: 'Notifications',
             onTap: () {
-              Navigator.pushNamed(context, '/notifications');
+              // This navigation logic seems to be for a dashboard with tabs.
+              // If ProfileScreen is part of a ProviderHomeScreen, this would make sense.
+              // For now, assuming it's a direct navigation.
+              Navigator.pushReplacementNamed(
+                context,
+                '/main', // Assuming '/main' leads to a dashboard
+                arguments: {'index': 2},
+              );
             },
           ),
           _buildOptionCard(

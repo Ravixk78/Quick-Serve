@@ -90,6 +90,7 @@ class MyApp extends StatelessWidget {
                     builder: (_) => ServiceListScreen(
                       categoryId: args?['categoryId'] as String?,
                       searchQuery: args?['search'] as String?,
+                      providerId: args?['providerId'] as String?,
                     ),
                   );
                 case '/service-details':

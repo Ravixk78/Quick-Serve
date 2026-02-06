@@ -60,21 +60,52 @@ class BookingService {
     }
   }
 
-  // Get bookings for a service provider
   Future<List<BookingModel>> getProviderBookings(String providerId) async {
     try {
+      final response = await _supabase
+          .from(SupabaseConfig.bookingsTable)
+          .select(
+            '*, service:services(name, image_url), customer:users!bookings_customer_id_fkey(full_name)',
+          )
+          .eq('provider_id', providerId)
+          .order('booking_date', ascending: false);
+
+      return (response as List).map((item) {
+        final data = Map<String, dynamic>.from(item);
+        // Flatten the joined data
+        if (data['service'] != null) {
+          data['service_name'] = data['service']['name'];
+          data['service_image'] = data['service']['image_url'];
+        }
+        if (data['customer'] != null) {
+          data['customer_name'] = data['customer']['full_name'];
+        }
+        return BookingModel.fromJson(data);
+      }).toList();
+    } catch (e) {
+      debugPrint('Error loading provider bookings: $e');
+      // If joined query fails, try a simple query as fallback
       final response = await _supabase
           .from(SupabaseConfig.bookingsTable)
           .select()
           .eq('provider_id', providerId)
           .order('booking_date', ascending: false);
-
       return (response as List)
           .map((item) => BookingModel.fromJson(item))
           .toList();
-    } catch (e) {
-      throw Exception('Failed to load bookings: $e');
     }
+  }
+
+  // Real-time stream for bookings
+  Stream<List<BookingModel>> getProviderBookingsStream(String providerId) {
+    return _supabase
+        .from(SupabaseConfig.bookingsTable)
+        .stream(primaryKey: ['id'])
+        .eq('provider_id', providerId)
+        .order('booking_date', ascending: false)
+        .map(
+          (data) => data.map((item) => BookingModel.fromJson(item)).toList(),
+        );
   }
 
   // Get booking by ID
@@ -137,7 +168,7 @@ class BookingService {
         case 'confirmed':
           title = 'Booking Confirmed! ✅';
           message =
-              'Great news! Your booking has been confirmed by the professional.';
+              'Great news! Your booking for ${booking.serviceName ?? 'a service'} with ${booking.customerName ?? 'a customer'} has been confirmed by the professional.';
           break;
         case 'on_hold':
           title = 'Booking On Hold ⏳';
@@ -163,6 +194,45 @@ class BookingService {
       );
     } catch (e) {
       throw Exception('Failed to update booking status: $e');
+    }
+  }
+
+  // Get provider stats
+  Future<Map<String, dynamic>> getProviderStats(String providerId) async {
+    try {
+      final response = await _supabase
+          .from(SupabaseConfig.bookingsTable)
+          .select('status')
+          .eq('provider_id', providerId);
+
+      int completed = 0;
+      int pending = 0;
+
+      for (final booking in response) {
+        final status = (booking['status'] as String).toLowerCase();
+        if (status == 'completed') completed++;
+        if (status == 'pending') pending++;
+      }
+
+      int currentLevel = (completed ~/ 10) + 1;
+      int nextBookingTarget = currentLevel * 10;
+      double progress = (completed % 10) / 10.0;
+
+      return {
+        'completed': completed,
+        'pending': pending,
+        'level': currentLevel,
+        'nextLevelTarget': nextBookingTarget,
+        'progress': progress,
+      };
+    } catch (e) {
+      return {
+        'completed': 0,
+        'pending': 0,
+        'level': 1,
+        'nextLevelTarget': 10,
+        'progress': 0.0,
+      };
     }
   }
 

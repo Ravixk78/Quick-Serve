@@ -14,6 +14,16 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _currentUser != null;
 
+  // Check authentication status
+  Future<bool> checkAuth() async {
+    final user = _authService.currentUser;
+    if (user != null) {
+      await loadUserProfile(user.id);
+      return true;
+    }
+    return false;
+  }
+
   // Sign up
   Future<bool> signUp({
     required String email,

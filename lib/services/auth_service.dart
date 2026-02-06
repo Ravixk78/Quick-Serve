@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/user_model.dart';
@@ -168,6 +169,28 @@ class AuthService {
       await _supabase.auth.resetPasswordForEmail(email);
     } catch (e) {
       throw Exception('Password reset failed: $e');
+    }
+  }
+
+  // Upload profile image
+  Future<String> uploadProfileImage(File imageFile, String userId) async {
+    try {
+      final fileExt = imageFile.path.split('.').last;
+      final fileName =
+          '$userId-${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      final filePath = '$userId/$fileName';
+
+      await _supabase.storage
+          .from(SupabaseConfig.profilesBucket)
+          .upload(filePath, imageFile);
+
+      final imageUrl = _supabase.storage
+          .from(SupabaseConfig.profilesBucket)
+          .getPublicUrl(filePath);
+
+      return imageUrl;
+    } catch (e) {
+      throw Exception('Failed to upload profile image: $e');
     }
   }
 }

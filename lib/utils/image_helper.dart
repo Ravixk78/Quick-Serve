@@ -26,6 +26,7 @@ class ImageHelper {
 
       // Step 2: Crop image if enabled
       if (cropEnabled) {
+        if (!context.mounted) return null;
         final croppedFile = await _cropImage(pickedFile.path, context);
         return croppedFile;
       }
@@ -134,7 +135,7 @@ class ImageHelper {
       },
     );
 
-    if (source != null) {
+    if (source != null && context.mounted) {
       return await pickAndCropImage(
         context: context,
         source: source,
