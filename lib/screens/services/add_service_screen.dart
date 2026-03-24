@@ -325,7 +325,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                             color: textColor,
                             fontWeight: FontWeight.w500,
                           ),
-                          value:
+                          initialValue:
                               _dbCategories.any(
                                 (c) => c.id == _selectedCategoryId,
                               )

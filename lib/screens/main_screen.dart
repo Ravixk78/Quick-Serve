@@ -42,6 +42,18 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+
+    // Safety check: Redirect to login if user is not authenticated
+    // This prevents any guest access to the main parts of the app
+    if (authProvider.currentUser == null && !authProvider.isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, '/login');
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: Colors.amber)),
+      );
+    }
+
     final isProvider = authProvider.currentUser?.role == 'service_provider';
 
     final screens = isProvider
